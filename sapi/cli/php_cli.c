@@ -448,26 +448,36 @@ static sapi_module_struct cli_sapi_module = {
 	"cli",							/* name */
 	"Command Line Interface",    	/* pretty name */
 
+	// 启动函数指向 php_cli_startup 指针
 	php_cli_startup,				/* startup */
 	php_module_shutdown_wrapper,	/* shutdown */
 
+	// 请求的初始化函数，Cli 没有定义
 	NULL,							/* activate */
+	// 请求的收尾处理函数，也就是 fflush(stdout)
 	sapi_cli_deactivate,			/* deactivate */
 
+	// 输出数据函数，Cli 是默认输出到标准输出
 	sapi_cli_ub_write,		    	/* unbuffered write */
 	sapi_cli_flush,				    /* flush */
 	NULL,							/* get uid */
 	NULL,							/* getenv */
 
+	// 错误处理函数
 	php_error,						/* error handler */
 
+	// 调用 header()函数的处理 handler
 	sapi_cli_header_handler,		/* header handler */
+	// 发送 header 时的函数
 	sapi_cli_send_headers,			/* send headers handler */
 	sapi_cli_send_header,			/* send header handler */
 
+	// 获取 POST 的数据
 	NULL,				            /* read POST data */
+	// 获取 cookie 的函数
 	sapi_cli_read_cookies,          /* read Cookies */
 
+	// 向 $_SERVER 中注册变量的函数
 	sapi_cli_register_variables,	/* register server variables */
 	sapi_cli_log_message,			/* Log message */
 	NULL,							/* Get request time */
@@ -1177,6 +1187,7 @@ int main(int argc, char *argv[])
 	char *ini_entries = NULL;
 	int ini_entries_len = 0;
 	int ini_ignore = 0;
+	// 将 cli_sapi_module 结构体赋值给 spai_module
 	sapi_module_struct *sapi_module = &cli_sapi_module;
 
 	/*
