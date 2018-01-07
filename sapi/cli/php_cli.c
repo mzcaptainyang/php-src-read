@@ -682,7 +682,7 @@ static int do_cli(int argc, char **argv) /* {{{ */
 		while ((c = php_getopt(argc, argv, OPTIONS, &php_optarg, &php_optind, 0, 2)) != -1) {
 			switch (c) {
 
-				// 执行 php -i 的时候进入此分支
+				// 执行 php -i 的时候进入此分支，这种操作不会经历 php 的生命周期，执行完后就会退出
 			case 'i': /* php info & quit */
 				if (php_request_startup()==FAILURE) {
 					goto err;
@@ -693,7 +693,7 @@ static int do_cli(int argc, char **argv) /* {{{ */
 				exit_status = (c == '?' && argc > 1 && !strchr(argv[1],  c));
 				goto out;
 
-					// 执行 php -v 的时候进入此分支
+					// 执行 php -v 的时候进入此分支，这种操作不会经历 php 的生命周期，执行完后就会退出
 			case 'v': /* show php version & quit */
 				php_printf("PHP %s (%s) (built: %s %s) ( %s)\nCopyright (c) 1997-2016 The PHP Group\n%s",
 					PHP_VERSION, cli_sapi_module.name, __DATE__, __TIME__,
@@ -714,7 +714,7 @@ static int do_cli(int argc, char **argv) /* {{{ */
 				sapi_deactivate();
 				goto out;
 
-					// 执行 php -m 的时候进入此分支
+					// 执行 php -m 的时候进入此分支，这种操作不会经历 php 的生命周期，执行完后就会退出
 			case 'm': /* list compiled in modules */
 				if (php_request_startup()==FAILURE) {
 					goto err;
@@ -924,7 +924,9 @@ static int do_cli(int argc, char **argv) /* {{{ */
 			script_file=argv[php_optind];
 			php_optind++;
 		}
+			// 执行脚本文件的方式
 		if (script_file) {
+				// 尝试查找和打开脚本文件
 			if (cli_seek_file_begin(&file_handle, script_file, &lineno) != SUCCESS) {
 				goto err;
 			} else {
@@ -956,6 +958,9 @@ static int do_cli(int argc, char **argv) /* {{{ */
 		argv[php_optind-1] = (char*)file_handle.filename;
 		SG(request_info).argv=argv+php_optind-1;
 
+			/**
+			 * 进入请求初始化阶段，也就是 php_request_startup阶段
+			 */
 		if (php_request_startup()==FAILURE) {
 			*arg_excp = arg_free;
 			fclose(file_handle.handle.fp);
@@ -985,6 +990,9 @@ static int do_cli(int argc, char **argv) /* {{{ */
 			if (interactive && cli_shell_callbacks.cli_shell_run) {
 				exit_status = cli_shell_callbacks.cli_shell_run();
 			} else {
+                /**
+                 * 进入脚本执行阶段，也就是 php_execute_script 阶段
+                 */
 				php_execute_script(&file_handle);
 				exit_status = EG(exit_status);
 			}
@@ -1152,6 +1160,9 @@ static int do_cli(int argc, char **argv) /* {{{ */
 
 out:
 	if (request_started) {
+        /**
+         * 脚本执行阶段完成之后，开始进入请求关闭阶段，php_request_shutdown 阶段
+         */
 		php_request_shutdown((void *) 0);
 	}
 	if (translated_path) {
@@ -1336,6 +1347,9 @@ exit_loop:
 	sapi_module->ini_entries = ini_entries;
 
 	// 在 cli 模式下调用 php_cli_startup 函数
+    /**
+     * 开始进入模块初始化的阶段，也就是 php_module_startup 阶段
+     */
 	/* startup after we get the above ini override se we get things right */
 	if (sapi_module->startup(sapi_module) == FAILURE) {
 		/* there is no way to see if we must call zend_ini_deactivate()
@@ -1353,7 +1367,9 @@ exit_loop:
 		CG(compiler_options) |= ZEND_COMPILE_EXTENDED_INFO;
 	}
 
-    // 开始进入请求初始化的阶段
+    /**
+     * 开始进入请求初始化的阶段，也就是 php_request_startup 阶段
+     */
 	zend_first_try {
 #ifndef PHP_CLI_WIN32_NO_CONSOLE
 		if (sapi_module == &cli_sapi_module) {
@@ -1374,6 +1390,9 @@ out:
 		free(ini_entries);
 	}
 	if (module_started) {
+        /**
+         * 开始进入模块关闭阶段，php_module_shutdown 阶段
+         */
 		php_module_shutdown();
 	}
 	if (sapi_started) {
