@@ -418,6 +418,7 @@ static void sapi_cli_send_header(sapi_header_struct *sapi_header, void *server_c
 }
 /* }}} */
 
+// 直接调用 php_module_startup
 static int php_cli_startup(sapi_module_struct *sapi_module) /* {{{ */
 {
 	if (php_module_startup(sapi_module, NULL, 0)==FAILURE) {
@@ -681,6 +682,7 @@ static int do_cli(int argc, char **argv) /* {{{ */
 		while ((c = php_getopt(argc, argv, OPTIONS, &php_optarg, &php_optind, 0, 2)) != -1) {
 			switch (c) {
 
+				// 执行 php -i 的时候进入此分支
 			case 'i': /* php info & quit */
 				if (php_request_startup()==FAILURE) {
 					goto err;
@@ -691,6 +693,7 @@ static int do_cli(int argc, char **argv) /* {{{ */
 				exit_status = (c == '?' && argc > 1 && !strchr(argv[1],  c));
 				goto out;
 
+					// 执行 php -v 的时候进入此分支
 			case 'v': /* show php version & quit */
 				php_printf("PHP %s (%s) (built: %s %s) ( %s)\nCopyright (c) 1997-2016 The PHP Group\n%s",
 					PHP_VERSION, cli_sapi_module.name, __DATE__, __TIME__,
@@ -711,6 +714,7 @@ static int do_cli(int argc, char **argv) /* {{{ */
 				sapi_deactivate();
 				goto out;
 
+					// 执行 php -m 的时候进入此分支
 			case 'm': /* list compiled in modules */
 				if (php_request_startup()==FAILURE) {
 					goto err;
@@ -1331,6 +1335,7 @@ exit_loop:
 
 	sapi_module->ini_entries = ini_entries;
 
+	// 在 cli 模式下调用 php_cli_startup 函数
 	/* startup after we get the above ini override se we get things right */
 	if (sapi_module->startup(sapi_module) == FAILURE) {
 		/* there is no way to see if we must call zend_ini_deactivate()
@@ -1348,10 +1353,12 @@ exit_loop:
 		CG(compiler_options) |= ZEND_COMPILE_EXTENDED_INFO;
 	}
 
+    // 开始进入请求初始化的阶段
 	zend_first_try {
 #ifndef PHP_CLI_WIN32_NO_CONSOLE
 		if (sapi_module == &cli_sapi_module) {
 #endif
+            // 进行 cli 脚本的处理
 			exit_status = do_cli(argc, argv);
 #ifndef PHP_CLI_WIN32_NO_CONSOLE
 		} else {
