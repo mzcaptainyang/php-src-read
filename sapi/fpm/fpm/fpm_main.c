@@ -1616,6 +1616,7 @@ int main(int argc, char *argv[])
 	zend_signal_startup();
 #endif
 
+	// 注册 sapi:将全局的 sapi_moudle 设置为 cgi_sapi_module
 	sapi_startup(&cgi_sapi_module);
 	cgi_sapi_module.php_ini_path_override = NULL;
 	cgi_sapi_module.php_ini_ignore_cwd = 1;
@@ -1809,6 +1810,7 @@ int main(int argc, char *argv[])
 	cgi_sapi_module.executable_location = argv[0];
 
 	/* startup after we get the above ini override se we get things right */
+	// 开始进入模块初始化阶段，也就是 php_module_startup 阶段
 	if (cgi_sapi_module.startup(&cgi_sapi_module) == FAILURE) {
 #ifdef ZTS
 		tsrm_shutdown();
@@ -1860,6 +1862,7 @@ consult the installation file that came with this distribution, or visit \n\
 		}
 	}
 
+	// 开始 fpm 进程的初始化
 	if (0 > fpm_init(argc, argv, fpm_config ? fpm_config : CGIG(fpm_config), fpm_prefix, fpm_pid, test_conf, php_allow_to_run_as_root, force_daemon, force_stderr)) {
 
 		if (fpm_globals.send_config_pipe[1]) {
@@ -1879,6 +1882,7 @@ consult the installation file that came with this distribution, or visit \n\
 	}
 	fpm_is_running = 1;
 
+	// 后面的都是 worker 进程的操作，master 进程不会走到下面
 	fcgi_fd = fpm_run(&max_requests);
 	parent = 0;
 

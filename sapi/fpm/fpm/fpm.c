@@ -55,6 +55,9 @@ int fpm_init(int argc, char **argv, char *config, char *prefix, char *pid, int t
 	fpm_globals.run_as_root = run_as_root;
 	fpm_globals.force_stderr = force_stderr;
 
+	/**
+	 * fpm_php_init_main 解析 php-fpm.conf 配置文件，为每个 worker pool 分配一个 fpm_worker_pool_s 结构。每个 worker pool 的配置在解析后保存到 fpm_worker_pool_s->config 中
+	 */
 	if (0 > fpm_php_init_main()           ||
 	    0 > fpm_stdio_init_main()         ||
 	    0 > fpm_conf_init_main(test_conf, force_daemon) ||
