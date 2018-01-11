@@ -1882,7 +1882,7 @@ consult the installation file that came with this distribution, or visit \n\
 	}
 	fpm_is_running = 1;
 
-	// 后面的都是 worker 进程的操作，master 进程不会走到下面
+	// 后面的都是 worker 进程的操作，master 进程不会走到下面，worker 在调用之后，返回监听的 socket_fd
 	fcgi_fd = fpm_run(&max_requests);
 	parent = 0;
 

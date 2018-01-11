@@ -56,7 +56,12 @@ int fpm_init(int argc, char **argv, char *config, char *prefix, char *pid, int t
 	fpm_globals.force_stderr = force_stderr;
 
 	/**
-	 * fpm_php_init_main 解析 php-fpm.conf 配置文件，为每个 worker pool 分配一个 fpm_worker_pool_s 结构。每个 worker pool 的配置在解析后保存到 fpm_worker_pool_s->config 中
+	 * fpm_config_init_main 解析 php-fpm.conf 配置文件，为每个 worker pool 分配一个 fpm_worker_pool_s 结构。每个 worker pool 的配置在解析后保存到 fpm_worker_pool_s->config 中
+	 * fpm_scoreboard_init_main 分配用户记录 worker 进程运行信息的结构，此结构分配在共享内存上
+	 * fpm_signals_init_main 创建一个管道，这个管道并不是用来进行 master 进程和 worker 的通信，它只在 master 进程中使用。同时设置 master 的信号处理函数为 sig_handler(),当 master 收到 SIGTERM,SIGINT,SIGUSR1,SIGSUSR2,SIGCHLD,SIGQUIT 这些信号的时候，将调用 sig_handler 处理，
+	 * fpm_sockets_init_main 创建每个 worker pool 的套接字，启动后 worker 将监听此 socket 接收请求
+	 * fpm_event_init_main 启动 master 的事件管理，fpm 实现了一个事件管理调度用于管理 i/o,定时事件，其中 i/o 事件根据不同平台选择 kqueue,epoll,poll,select 来管理。定时事件就是定时器，一定时间后触发某个事件
+	 * fpm_init()中主要的就是上面介绍的几个 init 过程，在完成这些初始化之后，最关键的就是 fpm_run 的操作。此环节将 fork 子进程，启动进程管理器，执行后 master 进程将不会返回这个函数，只有各自的 worker 进程会返回，也就是说 main 函数中调用 fpm_run 之后的操作都是 worker 进程进行的
 	 */
 	if (0 > fpm_php_init_main()           ||
 	    0 > fpm_stdio_init_main()         ||
@@ -97,13 +102,16 @@ int fpm_run(int *max_requests) /* {{{ */
 {
 	struct fpm_worker_pool_s *wp;
 
+	// 编译 worker pool
 	/* create initial children in all pools */
 	for (wp = fpm_worker_all_pools; wp; wp = wp->next) {
 		int is_parent;
 
+		// 调用 fpm_children_make() fork 子进程
 		is_parent = fpm_children_create_initial(wp);
 
 		if (!is_parent) {
+			// fork 出的 worker 进程
 			goto run_child;
 		}
 
@@ -114,14 +122,17 @@ int fpm_run(int *max_requests) /* {{{ */
 		}
 	}
 
+	// master 进程将进入 event 循环，不再往下走
 	/* run event loop forever */
 	fpm_event_loop(0);
 
+	// 只有 worker 进程将会进入到这里
 run_child: /* only workers reach this point */
 
 	fpm_cleanups_run(FPM_CLEANUP_CHILD);
 
 	*max_requests = fpm_globals.max_requests;
+	// 返回监听的套接字
 	return fpm_globals.listening_socket;
 }
 /* }}} */

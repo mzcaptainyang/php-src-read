@@ -174,6 +174,7 @@ static void sig_handler(int signo) /* {{{ */
 
 	saved_errno = errno;
 	s = sig_chars[signo];
+	// 将信号通知写入管道 sp[1]端
 	write(sp[1], &s, sizeof(s));
 	errno = saved_errno;
 }
@@ -183,6 +184,7 @@ int fpm_signals_init_main() /* {{{ */
 {
 	struct sigaction act;
 
+	// 创建一个全双工管道
 	if (0 > socketpair(AF_UNIX, SOCK_STREAM, 0, sp)) {
 		zlog(ZLOG_SYSERROR, "failed to init signals: socketpair()");
 		return -1;
@@ -199,6 +201,7 @@ int fpm_signals_init_main() /* {{{ */
 	}
 
 	memset(&act, 0, sizeof(act));
+	// 注册信号处理函数
 	act.sa_handler = sig_handler;
 	sigfillset(&act.sa_mask);
 
